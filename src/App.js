@@ -1,23 +1,22 @@
-import logo from './logo.svg';
-import './App.css';
+import { useState, useCallback } from 'react';
+import MapView from './components/MapView';
+import PointForm from './components/PointForm';
+import Filters from './components/Filters';
+import PointsList from './components/PointsList';
 
 function App() {
+  const [filter, setFilter] = useState('all');
+  const refreshKey = useState(0);
+  const [, setKey] = refreshKey;
+  const triggerRefresh = useCallback(() => setKey(k => k + 1), []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <h1>Carte interactive des points</h1>
+      <Filters filter={filter} setFilter={setFilter} />
+      <PointForm onAdded={triggerRefresh} />
+      <PointsList filter={filter} />
+      <MapView filter={filter} refreshKey={refreshKey[0]} />
     </div>
   );
 }
