@@ -1,6 +1,61 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 
+// Composant Avatar qui affiche la photo si elle existe, sinon les initiales
+function ProfileAvatar({ profile, size = 'md' }) {
+  const [hasImage, setHasImage] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Générer le chemin de l'image basé sur le nom du profil (en minuscules, sans accents)
+  const getImagePath = (name) => {
+    if (!name) return null;
+    // Convertir en minuscules et retirer les accents
+    const normalized = name.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '-');
+    return `/users/${normalized}.jpg`;
+  };
+
+  const imagePath = getImagePath(profile?.name);
+  const sizeClasses = size === 'md' ? 'w-10 h-10' : 'w-8 h-8';
+  const textSize = size === 'md' ? 'font-medium' : 'text-sm font-medium';
+
+  useEffect(() => {
+    if (!imagePath) return;
+
+    // Vérifier si l'image existe
+    const img = new Image();
+    img.onload = () => {
+      setHasImage(true);
+      setImageLoaded(true);
+    };
+    img.onerror = () => {
+      setHasImage(false);
+    };
+    img.src = imagePath;
+  }, [imagePath]);
+
+  if (hasImage && imageLoaded) {
+    return (
+      <img
+        src={imagePath}
+        alt={profile?.name}
+        className={`${sizeClasses} rounded-full object-cover`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${sizeClasses} rounded-full flex items-center justify-center text-white ${textSize}`}
+      style={{ backgroundColor: profile?.color || '#3B82F6' }}
+    >
+      {profile?.initials || '??'}
+    </div>
+  );
+}
+
 export default function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -53,15 +108,10 @@ export default function Layout({ children }) {
             <div className="hidden md:flex items-center gap-4 relative">
               <button
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-grey-100 transition-colors cursor-pointer"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/50 transition-colors cursor-pointer"
               >
                 <span className="text-sm text-grey-500">{currentProfile?.name || 'Sélectionner'}</span>
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
-                  style={{ backgroundColor: currentProfile?.color || '#3B82F6' }}
-                >
-                  {currentProfile?.initials || '??'}
-                </div>
+                <ProfileAvatar profile={currentProfile} size="md" />
                 <svg className="w-4 h-4 text-grey-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -81,12 +131,7 @@ export default function Layout({ children }) {
                         currentProfile?.id === profile.id ? 'bg-primary-50' : ''
                       }`}
                     >
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                        style={{ backgroundColor: profile.color }}
-                      >
-                        {profile.initials}
-                      </div>
+                      <ProfileAvatar profile={profile} size="sm" />
                       <span className="text-sm text-grey-700">{profile.name}</span>
                       {currentProfile?.id === profile.id && (
                         <svg className="w-4 h-4 text-primary-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
@@ -95,6 +140,23 @@ export default function Layout({ children }) {
                       )}
                     </button>
                   ))}
+
+                  {/* Séparateur */}
+                  <div className="border-t border-grey-200 my-2" />
+
+                  {/* Bouton de déconnexion */}
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('isAuthenticated');
+                      window.location.reload();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-red-50 transition-colors text-red-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span className="text-sm">Déconnexion</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -132,12 +194,7 @@ export default function Layout({ children }) {
                       currentProfile?.id === profile.id ? 'bg-primary-50' : ''
                     }`}
                   >
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
-                      style={{ backgroundColor: profile.color }}
-                    >
-                      {profile.initials}
-                    </div>
+                    <ProfileAvatar profile={profile} size="md" />
                     <span className="text-sm text-grey-700">{profile.name}</span>
                     {currentProfile?.id === profile.id && (
                       <svg className="w-4 h-4 text-primary-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
@@ -146,6 +203,22 @@ export default function Layout({ children }) {
                     )}
                   </button>
                 ))}
+              </div>
+
+              {/* Bouton de déconnexion mobile */}
+              <div className="border-t border-grey-200 mt-4 pt-4">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('isAuthenticated');
+                    window.location.reload();
+                  }}
+                  className="w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-red-50 transition-colors text-red-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span className="text-sm font-medium">Déconnexion</span>
+                </button>
               </div>
             </div>
           )}

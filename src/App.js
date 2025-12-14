@@ -1,11 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import MapView from './components/MapView';
 import PointsList from './components/PointsList';
 import PointForm from './components/PointForm';
+import LoginPage from './components/LoginPage';
 
 function App() {
   const [filter, setFilter] = useState('all');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Vérifier si l'utilisateur est déjà connecté
+  useEffect(() => {
+    const authStatus = localStorage.getItem('isAuthenticated');
+    setIsAuthenticated(authStatus === 'true');
+    setCheckingAuth(false);
+  }, []);
+
+  // Afficher un écran de chargement pendant la vérification
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-grey-100 flex items-center justify-center">
+        <div className="text-grey-500">Chargement...</div>
+      </div>
+    );
+  }
+
+  // Afficher la page de connexion si non authentifié
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <Layout>
