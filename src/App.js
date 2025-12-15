@@ -4,11 +4,13 @@ import MapView from './components/MapView';
 import PointsList from './components/PointsList';
 import PointForm from './components/PointForm';
 import LoginPage from './components/LoginPage';
+import { usePWAInstall } from './hooks/usePWAInstall';
 
 function App() {
   const [filter, setFilter] = useState('all');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const { canInstall, showPrompt } = usePWAInstall();
 
   // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
@@ -60,6 +62,21 @@ function App() {
           <h2 className="text-h2 text-grey-700 mb-6">Ajouter un point</h2>
           <PointForm />
         </div>
+
+        {/* Bouton d'installation PWA - visible uniquement si disponible */}
+        {canInstall && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <button
+              onClick={showPrompt}
+              className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Installer l'app
+            </button>
+          </div>
+        )}
       </div>
     </Layout>
   );
