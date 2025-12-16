@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { useUser } from '../contexts/UserContext';
 import { usePoints } from '../contexts/PointsContext';
@@ -19,6 +19,7 @@ export default function PointForm() {
   const [form, setForm] = useState(initialFormState);
   const [suggestions, setSuggestions] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const skipFetchRef = useRef(false);
 
   const fetchSuggestions = async (query) => {
     if (!query.trim()) {
@@ -40,6 +41,10 @@ export default function PointForm() {
   };
 
   useEffect(() => {
+    if (skipFetchRef.current) {
+      skipFetchRef.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       fetchSuggestions(form.address);
     }, 300);
@@ -47,6 +52,7 @@ export default function PointForm() {
   }, [form.address]);
 
   const handleSelectSuggestion = (s) => {
+    skipFetchRef.current = true;
     setForm({
       ...form,
       address: s.display_name,
