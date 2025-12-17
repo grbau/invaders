@@ -240,6 +240,15 @@ code {
   overflow: hidden;
 }
 
+/* Leaflet popup z-index override */
+.leaflet-popup {
+  z-index: 1000 !important;
+}
+
+.leaflet-popup-pane {
+  z-index: 1000 !important;
+}
+
 /* Status badges */
 .badge-success {
   background-color: var(--color-success-50);

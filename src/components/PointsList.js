@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { usePoints } from '../contexts/PointsContext';
 import PointDetailPanel from './PointDetailPanel';
 
-export default function PointsList({ filter, setFilter }) {
+export default function PointsList({ filter, setFilter, onSelectPoint }) {
   const { currentProfile } = useUser();
   const { allPoints } = usePoints();
   const [points, setPoints] = useState([]);
@@ -11,6 +11,8 @@ export default function PointsList({ filter, setFilter }) {
   const [isRouteMode, setIsRouteMode] = useState(false);
   const [selectedForRoute, setSelectedForRoute] = useState([]);
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' ou 'desc'
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
 
   // Filtrer et trier les points
   useEffect(() => {
@@ -96,32 +98,75 @@ export default function PointsList({ filter, setFilter }) {
     { key: 'to_select', label: 'À flasher' },
   ];
 
+  // Fermer le dropdown au clic extérieur
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setFilterDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const currentFilterLabel = filters.find(f => f.key === filter)?.label || 'Tous';
+
   return (
     <div className="bg-white shadow-card p-6 h-full flex flex-col overflow-hidden">
       {/* Header avec titre et total */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
         <h2 className="text-h2 text-grey-700">
           Points de {currentProfile?.name || '...'}
         </h2>
-        <div className="bg-primary-500 text-white px-4 py-2 rounded-chip font-semibold text-sm">
+        <div className="bg-primary-500 text-white px-4 py-2 rounded-chip font-semibold text-sm self-start sm:self-auto">
           {flashedCount}/{totalCount} pixels · {totalPoints} pts
         </div>
       </div>
 
       {/* Filtres et bouton itinéraire */}
       <div className="flex items-center justify-between gap-4 mb-6">
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 lg:mx-0 lg:px-0">
-          {filters.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`chip px-4 py-2 rounded-chip font-medium text-sm whitespace-nowrap ${
-                filter === f.key ? 'chip-active' : 'chip-inactive'
-              }`}
+        {/* Custom dropdown filtre */}
+        <div className="relative" ref={filterDropdownRef}>
+          <button
+            onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+            className="h-12 px-4 pr-10 border border-grey-300 bg-white text-grey-700 text-base font-medium rounded-lg hover:border-grey-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors cursor-pointer flex items-center gap-2 min-w-[140px]"
+          >
+            <span>{currentFilterLabel}</span>
+            <svg
+              className={`w-4 h-4 text-grey-400 absolute right-3 transition-transform ${filterDropdownOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              {f.label}
-            </button>
-          ))}
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {filterDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-full bg-white border border-grey-200 rounded-lg shadow-lg py-1 z-50">
+              {filters.map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => {
+                    setFilter(f.key);
+                    setFilterDropdownOpen(false);
+                  }}
+                  className={`w-full px-4 py-2.5 text-left text-base transition-colors flex items-center justify-between ${
+                    filter === f.key
+                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      : 'text-grey-700 hover:bg-grey-50'
+                  }`}
+                >
+                  <span>{f.label}</span>
+                  {filter === f.key && (
+                    <svg className="w-4 h-4 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -214,7 +259,14 @@ export default function PointsList({ filter, setFilter }) {
             return (
               <div
                 key={p.id}
-                onClick={() => isRouteMode ? togglePointForRoute(p) : setSelectedPoint(p)}
+                onClick={() => {
+                  if (isRouteMode) {
+                    togglePointForRoute(p);
+                  } else {
+                    setSelectedPoint(p);
+                    onSelectPoint?.(p.id);
+                  }
+                }}
                 className={`flex items-start gap-3 p-4 transition-colors card-hover cursor-pointer ${
                   isRouteMode && isSelectedForRoute
                     ? 'bg-primary-50 border-2 border-primary-300'
@@ -274,7 +326,10 @@ export default function PointsList({ filter, setFilter }) {
       {selectedPoint && (
         <PointDetailPanel
           point={selectedPoint}
-          onClose={() => setSelectedPoint(null)}
+          onClose={() => {
+            setSelectedPoint(null);
+            onSelectPoint?.(null); // Fermer aussi la popup sur la carte
+          }}
         />
       )}
     </div>

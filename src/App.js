@@ -10,13 +10,33 @@ function App() {
   const [filter, setFilter] = useState('all');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [selectedPointId, setSelectedPointId] = useState(null);
   const { canInstall, showPrompt } = usePWAInstall();
+
+  // Vérifier si la session est valide
+  const checkSession = () => {
+    const expiresAt = localStorage.getItem('sessionExpiresAt');
+    if (expiresAt && Date.now() < parseInt(expiresAt, 10)) {
+      return true;
+    }
+    // Session expirée ou inexistante - nettoyer
+    localStorage.removeItem('sessionExpiresAt');
+    return false;
+  };
 
   // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
-    const authStatus = localStorage.getItem('isAuthenticated');
-    setIsAuthenticated(authStatus === 'true');
+    setIsAuthenticated(checkSession());
     setCheckingAuth(false);
+
+    // Vérifier la session périodiquement (toutes les minutes)
+    const interval = setInterval(() => {
+      if (!checkSession()) {
+        setIsAuthenticated(false);
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Afficher un écran de chargement pendant la vérification
@@ -41,7 +61,7 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Liste des points */}
           <div className="order-1 h-[400px] lg:h-[560px]">
-            <PointsList filter={filter} setFilter={setFilter} />
+            <PointsList filter={filter} setFilter={setFilter} onSelectPoint={setSelectedPointId} />
           </div>
 
           {/* Carte */}
@@ -51,7 +71,7 @@ function App() {
                 Carte
               </div>
               <div className="flex-1">
-                <MapView filter={filter} />
+                <MapView filter={filter} selectedPointId={selectedPointId} onClosePopup={() => setSelectedPointId(null)} />
               </div>
             </div>
           </div>

@@ -6,6 +6,9 @@ const VALID_CREDENTIALS = {
   passwordHash: 'c07abca79371b3a9105df817c4473d0c19b03ace5a6bbc4d34ebaebb6d575aba',
 };
 
+// Durée de session en millisecondes (1 jour)
+const SESSION_DURATION = 24 * 60 * 60 * 1000;
+
 // Fonction de hash SHA-256
 async function hashString(str) {
   const encoder = new TextEncoder();
@@ -33,7 +36,8 @@ export default function LoginPage({ onLogin }) {
       // Comparer les hash
       if (usernameHash === VALID_CREDENTIALS.usernameHash &&
           passwordHash === VALID_CREDENTIALS.passwordHash) {
-        localStorage.setItem('isAuthenticated', 'true');
+        const expiresAt = Date.now() + SESSION_DURATION;
+        localStorage.setItem('sessionExpiresAt', expiresAt.toString());
         onLogin();
       } else {
         setError('Identifiant ou mot de passe incorrect');

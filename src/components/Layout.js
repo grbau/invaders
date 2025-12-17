@@ -88,7 +88,7 @@ export default function Layout({ children }) {
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div
             className={`absolute inset-0 bg-white/95 backdrop-blur-sm transition-transform duration-300 ease-out ${
-              isScrolled ? 'translate-y-0' : '-translate-y-full'
+              isScrolled || mobileMenuOpen ? 'translate-y-0' : '-translate-y-full'
             }`}
           />
         </div>

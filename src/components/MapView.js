@@ -1,5 +1,5 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { useEffect, useState, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import L from 'leaflet';
 import { usePoints } from '../contexts/PointsContext';
 
@@ -39,12 +39,121 @@ const createCustomIcon = (color) => {
   });
 };
 
-export default function MapView({ filter }) {
+// Composant pour gérer le fly vers un point sélectionné
+function FlyToPoint({ point }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (point) {
+      map.flyTo([point.latitude, point.longitude], 15, {
+        duration: 1
+      });
+    }
+  }, [point, map]);
+
+  return null;
+}
+
+// Trouver la zone avec le plus de points dans un rayon de 20km
+function findBestCenter(points) {
+  if (points.length === 0) return null;
+  if (points.length === 1) return { lat: points[0].latitude, lng: points[0].longitude };
+
+  let bestCenter = null;
+  let maxCount = 0;
+
+  // Pour chaque point, compter combien de points sont dans un rayon de 20km
+  points.forEach(p => {
+    let count = 0;
+    points.forEach(other => {
+      const distance = getDistanceKm(p.latitude, p.longitude, other.latitude, other.longitude);
+      if (distance <= 20) count++;
+    });
+    if (count > maxCount) {
+      maxCount = count;
+      bestCenter = { lat: p.latitude, lng: p.longitude };
+    }
+  });
+
+  return bestCenter;
+}
+
+// Calculer la distance en km entre deux points (formule Haversine)
+function getDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Composant pour centrer la carte au chargement
+function InitialCenter({ points }) {
+  const map = useMap();
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (initialized || points.length === 0) return;
+
+    // Essayer d'abord la géolocalisation
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          map.setView([position.coords.latitude, position.coords.longitude], 11);
+          setInitialized(true);
+        },
+        () => {
+          // Si géolocalisation refusée, centrer sur la zone avec le plus de points
+          const bestCenter = findBestCenter(points);
+          if (bestCenter) {
+            map.setView([bestCenter.lat, bestCenter.lng], 11);
+          }
+          setInitialized(true);
+        },
+        { timeout: 3000 }
+      );
+    } else {
+      // Pas de géolocalisation disponible
+      const bestCenter = findBestCenter(points);
+      if (bestCenter) {
+        map.setView([bestCenter.lat, bestCenter.lng], 11);
+      }
+      setInitialized(true);
+    }
+  }, [map, points, initialized]);
+
+  return null;
+}
+
+export default function MapView({ filter, selectedPointId, onClosePopup }) {
   const { allPoints } = usePoints();
   const [points, setPoints] = useState([]);
+  const markerRefs = useRef({});
 
   const greenIcon = useMemo(() => createCustomIcon(MARKER_COLORS.success), []);
   const orangeIcon = useMemo(() => createCustomIcon(MARKER_COLORS.warning), []);
+
+  // Trouver le point sélectionné
+  const selectedPoint = useMemo(() => {
+    return selectedPointId ? allPoints.find(p => p.id === selectedPointId) : null;
+  }, [selectedPointId, allPoints]);
+
+  // Ouvrir/fermer la popup du marker sélectionné
+  useEffect(() => {
+    if (selectedPointId && markerRefs.current[selectedPointId]) {
+      setTimeout(() => {
+        markerRefs.current[selectedPointId]?.openPopup();
+      }, 1000); // Attendre la fin de l'animation flyTo
+    } else if (selectedPointId === null) {
+      // Fermer toutes les popups quand aucun point n'est sélectionné
+      Object.values(markerRefs.current).forEach(marker => {
+        marker?.closePopup();
+      });
+    }
+  }, [selectedPointId]);
 
   // Filtrer les points selon le filtre actif
   useEffect(() => {
@@ -57,7 +166,7 @@ export default function MapView({ filter }) {
   return (
     <MapContainer
       center={[46.603354, 1.888334]}
-      zoom={6}
+      zoom={8}
       style={{ height: '100%', width: '100%' }}
       className="z-0"
     >
@@ -65,11 +174,17 @@ export default function MapView({ filter }) {
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
+      <FlyToPoint point={selectedPoint} />
+      <InitialCenter points={allPoints} />
       {points.map(p => (
         <Marker
           key={p.id}
           position={[p.latitude, p.longitude]}
           icon={p.status === 'selected' ? greenIcon : orangeIcon}
+          ref={(ref) => { markerRefs.current[p.id] = ref; }}
+          eventHandlers={{
+            popupclose: () => onClosePopup?.()
+          }}
         >
           <Popup>
             <div className="p-1 min-w-[180px]">
