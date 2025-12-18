@@ -8,6 +8,12 @@ export default function UserComparison() {
   const [pointsByProfile, setPointsByProfile] = useState({});
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isTransfertMode, setIsTransfertMode] = useState(false);
+  const [selectedPointsForTransfert, setSelectedPointsForTransfert] = useState([]);
+  const [showTransfertModal, setShowTransfertModal] = useState(false);
+  const [targetProfileId, setTargetProfileId] = useState('');
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferMessage, setTransferMessage] = useState(null);
 
   // Charger les points pour les profils sélectionnés
   useEffect(() => {
@@ -49,6 +55,133 @@ export default function UserComparison() {
         return prev.filter(id => id !== profileId);
       }
       return [...prev, profileId];
+    });
+  };
+
+  // Toggle la sélection d'un point pour le transfert
+  const togglePointForTransfert = (point) => {
+    setSelectedPointsForTransfert(prev => {
+      const isAlreadySelected = prev.some(p => p.key === point.key);
+      if (isAlreadySelected) {
+        return prev.filter(p => p.key !== point.key);
+      }
+      return [...prev, point];
+    });
+  };
+
+  // Vérifier si un point est sélectionné pour le transfert
+  const isPointSelectedForTransfert = (point) => {
+    return selectedPointsForTransfert.some(p => p.key === point.key);
+  };
+
+  // Annuler le mode transfert
+  const cancelTransfertMode = () => {
+    setIsTransfertMode(false);
+    setSelectedPointsForTransfert([]);
+    setShowTransfertModal(false);
+    setTargetProfileId('');
+  };
+
+  // Ouvrir le modal de transfert
+  const openTransfertModal = () => {
+    setShowTransfertModal(true);
+  };
+
+  // Fermer le modal de transfert
+  const closeTransfertModal = () => {
+    setShowTransfertModal(false);
+    setTargetProfileId('');
+  };
+
+  // Copier les points sélectionnés vers le profil cible
+  const copyPointsToProfile = async () => {
+    if (!targetProfileId || selectedPointsForTransfert.length === 0) return;
+
+    setTransferLoading(true);
+    setTransferMessage(null);
+
+    try {
+      // Récupérer les données complètes des points depuis pointsByProfile
+      const pointsToInsert = selectedPointsForTransfert.map(point => {
+        // Trouver le point original avec toutes ses données
+        let originalPoint = null;
+        for (const profileId of point.profilesWithPoint) {
+          const profilePoints = pointsByProfile[profileId] || [];
+          originalPoint = profilePoints.find(p =>
+            p.name === point.name ||
+            (p.latitude?.toFixed(4) === point.latitude?.toFixed(4) &&
+             p.longitude?.toFixed(4) === point.longitude?.toFixed(4))
+          );
+          if (originalPoint) break;
+        }
+
+        return {
+          name: point.name,
+          address: point.address,
+          latitude: point.latitude,
+          longitude: point.longitude,
+          points: point.points,
+          status: originalPoint?.status || 'selected',
+          profile_id: targetProfileId,
+        };
+      });
+
+      const { error } = await supabase
+        .from('points')
+        .insert(pointsToInsert);
+
+      if (error) throw error;
+
+      setTransferMessage({
+        type: 'success',
+        text: `${pointsToInsert.length} point${pointsToInsert.length > 1 ? 's' : ''} copié${pointsToInsert.length > 1 ? 's' : ''} avec succès !`
+      });
+
+      // Rafraîchir les données
+      const { data: newData } = await supabase
+        .from('points')
+        .select('*')
+        .eq('profile_id', targetProfileId);
+
+      if (newData) {
+        setPointsByProfile(prev => ({
+          ...prev,
+          [targetProfileId]: newData
+        }));
+      }
+
+      // Fermer le modal et réinitialiser après un délai
+      setTimeout(() => {
+        closeTransfertModal();
+        setSelectedPointsForTransfert([]);
+        setIsTransfertMode(false);
+        setTransferMessage(null);
+      }, 2000);
+
+    } catch (error) {
+      console.error('Erreur lors de la copie des points:', error);
+      setTransferMessage({
+        type: 'error',
+        text: 'Erreur lors de la copie des points. Veuillez réessayer.'
+      });
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
+  // Obtenir les profils disponibles pour le transfert (ceux qui n'ont pas déjà tous les points sélectionnés)
+  const getAvailableTargetProfiles = () => {
+    return validProfiles.filter(profile => {
+      // Vérifier si ce profil n'a pas déjà tous les points sélectionnés
+      const profilePoints = pointsByProfile[profile.id] || [];
+      const hasAllPoints = selectedPointsForTransfert.every(selectedPoint =>
+        profilePoints.some(p =>
+          p.name === selectedPoint.name ||
+          (p.latitude?.toFixed(4) === selectedPoint.latitude?.toFixed(4) &&
+           p.longitude?.toFixed(4) === selectedPoint.longitude?.toFixed(4))
+        )
+      );
+      return !hasAllPoints;
     });
   };
 
@@ -254,49 +387,110 @@ export default function UserComparison() {
               {/* Tableau des différences */}
               {comparisonData.differences.length > 0 && (
                 <div>
-                  <h3 className="text-base font-semibold text-grey-700 mb-3 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                    Différences ({comparisonData.differences.length})
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-base font-semibold text-grey-700 flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                      Différences ({comparisonData.differences.length})
+                    </h3>
+                    {/* Bouton pour activer/désactiver le mode transfert */}
+                    {!isTransfertMode ? (
+                      <button
+                        onClick={() => setIsTransfertMode(true)}
+                        className="text-sm px-3 py-1.5 bg-primary-50 text-primary-600 hover:bg-primary-100 rounded-lg transition-colors flex items-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Transférer des points
+                      </button>
+                    ) : (
+                      <button
+                        onClick={cancelTransfertMode}
+                        className="text-sm px-3 py-1.5 bg-grey-100 text-grey-600 hover:bg-grey-200 rounded-lg transition-colors"
+                      >
+                        Annuler
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Barre d'action quand des points sont sélectionnés */}
+                  {isTransfertMode && selectedPointsForTransfert.length > 0 && (
+                    <div className="mb-3 p-3 bg-primary-50 border border-primary-200 rounded-lg flex items-center justify-between">
+                      <span className="text-sm text-primary-700">
+                        {selectedPointsForTransfert.length} point{selectedPointsForTransfert.length > 1 ? 's' : ''} sélectionné{selectedPointsForTransfert.length > 1 ? 's' : ''}
+                      </span>
+                      <button
+                        onClick={openTransfertModal}
+                        className="text-sm px-3 py-1.5 bg-primary-500 text-white hover:bg-primary-600 rounded-lg transition-colors flex items-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Copier vers un profil
+                      </button>
+                    </div>
+                  )}
+
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-grey-50">
+                          {isTransfertMode && (
+                            <th className="px-3 py-2 w-10"></th>
+                          )}
                           <th className="px-3 py-2 text-left font-medium text-grey-600">Nom</th>
                           <th className="px-3 py-2 text-left font-medium text-grey-600">Possédé par</th>
                           <th className="px-3 py-2 text-right font-medium text-grey-600">Points</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-grey-100">
-                        {comparisonData.differences.map((point, idx) => (
-                          <tr key={idx} className="hover:bg-grey-50">
-                            <td className="px-3 py-2 text-grey-700">{point.name}</td>
-                            <td className="px-3 py-2">
-                              <div className="flex flex-wrap gap-1">
-                                {point.profilesWithPoint.map(profileId => {
-                                  const profile = getProfile(profileId);
-                                  return profile ? (
-                                    <span
-                                      key={profileId}
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
-                                      style={{
-                                        backgroundColor: `${profile.color}20`,
-                                        color: profile.color
-                                      }}
-                                    >
-                                      {profile.name}
-                                    </span>
-                                  ) : null;
-                                })}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
-                                {point.points} pts
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {comparisonData.differences.map((point, idx) => {
+                          const isSelected = isPointSelectedForTransfert(point);
+                          return (
+                            <tr
+                              key={idx}
+                              className={`hover:bg-grey-50 ${isTransfertMode ? 'cursor-pointer' : ''} ${isSelected ? 'bg-primary-50' : ''}`}
+                              onClick={isTransfertMode ? () => togglePointForTransfert(point) : undefined}
+                            >
+                              {isTransfertMode && (
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => togglePointForTransfert(point)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-4 h-4 text-primary-500 border-grey-300 rounded focus:ring-primary-500"
+                                  />
+                                </td>
+                              )}
+                              <td className="px-3 py-2 text-grey-700">{point.name}</td>
+                              <td className="px-3 py-2">
+                                <div className="flex flex-wrap gap-1">
+                                  {point.profilesWithPoint.map(profileId => {
+                                    const profile = getProfile(profileId);
+                                    return profile ? (
+                                      <span
+                                        key={profileId}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
+                                        style={{
+                                          backgroundColor: `${profile.color}20`,
+                                          color: profile.color
+                                        }}
+                                      >
+                                        {profile.name}
+                                      </span>
+                                    ) : null;
+                                  })}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+                                  {point.points} pts
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -311,6 +505,153 @@ export default function UserComparison() {
               )}
             </div>
           ) : null}
+        </div>
+      )}
+
+      {/* Modal de transfert */}
+      {showTransfertModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Header du modal */}
+            <div className="p-4 border-b border-grey-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-grey-700">Copier les points</h3>
+                <button
+                  onClick={closeTransfertModal}
+                  className="p-1 hover:bg-grey-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5 text-grey-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-sm text-grey-500 mt-1">
+                {selectedPointsForTransfert.length} point{selectedPointsForTransfert.length > 1 ? 's' : ''} sélectionné{selectedPointsForTransfert.length > 1 ? 's' : ''}
+              </p>
+            </div>
+
+            {/* Contenu du modal */}
+            <div className="p-4">
+              {/* Message de feedback */}
+              {transferMessage && (
+                <div className={`mb-4 p-3 rounded-lg ${
+                  transferMessage.type === 'success'
+                    ? 'bg-green-50 text-green-700 border border-green-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {transferMessage.type === 'success' ? (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    <span className="text-sm font-medium">{transferMessage.text}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Liste des points à copier */}
+              <div className="mb-4">
+                <p className="text-sm font-medium text-grey-700 mb-2">Points à copier :</p>
+                <div className="bg-grey-50 rounded-lg p-3 max-h-32 overflow-y-auto">
+                  <ul className="space-y-1">
+                    {selectedPointsForTransfert.map((point, idx) => (
+                      <li key={idx} className="text-sm text-grey-600 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
+                        {point.name} ({point.points} pts)
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Sélection du profil cible */}
+              <div className="mb-4">
+                <p className="text-sm font-medium text-grey-700 mb-2">Copier vers :</p>
+                <div className="space-y-2">
+                  {getAvailableTargetProfiles().map(profile => (
+                    <button
+                      key={profile.id}
+                      onClick={() => setTargetProfileId(profile.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                        targetProfileId === profile.id
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-grey-200 hover:border-grey-300'
+                      }`}
+                    >
+                      {profile.picture ? (
+                        <img
+                          src={profile.picture}
+                          alt={profile.name}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                          style={{ backgroundColor: profile.color }}
+                        >
+                          {profile.initials}
+                        </div>
+                      )}
+                      <span className={`font-medium ${targetProfileId === profile.id ? 'text-primary-700' : 'text-grey-700'}`}>
+                        {profile.name}
+                      </span>
+                      {targetProfileId === profile.id && (
+                        <svg className="w-5 h-5 text-primary-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                  {getAvailableTargetProfiles().length === 0 && (
+                    <p className="text-sm text-grey-500 text-center py-4">
+                      Tous les profils ont déjà ces points.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer du modal */}
+            <div className="p-4 border-t border-grey-100 flex gap-3">
+              <button
+                onClick={closeTransfertModal}
+                className="flex-1 px-4 py-2 text-grey-600 bg-grey-100 hover:bg-grey-200 rounded-lg transition-colors font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={copyPointsToProfile}
+                disabled={!targetProfileId || transferLoading}
+                className={`flex-1 px-4 py-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 ${
+                  targetProfileId && !transferLoading
+                    ? 'bg-primary-500 text-white hover:bg-primary-600'
+                    : 'bg-grey-200 text-grey-400 cursor-not-allowed'
+                }`}
+              >
+                {transferLoading ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Copie en cours...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                    </svg>
+                    Copier
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
