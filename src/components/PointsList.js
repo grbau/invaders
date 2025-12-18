@@ -263,7 +263,6 @@ export default function PointsList({ filter, setFilter, onSelectPoint }) {
                   if (isRouteMode) {
                     togglePointForRoute(p);
                   } else {
-                    setSelectedPoint(p);
                     onSelectPoint?.(p.id);
                   }
                 }}
@@ -307,7 +306,7 @@ export default function PointsList({ filter, setFilter, onSelectPoint }) {
                 </div>
 
                 {/* Points */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 flex items-center gap-2">
                   <span className={`px-3 py-1 rounded-chip text-sm font-medium ${
                     p.status === 'selected'
                       ? 'badge-success'
@@ -315,6 +314,21 @@ export default function PointsList({ filter, setFilter, onSelectPoint }) {
                   }`}>
                     {p.points || 0} pts
                   </span>
+                  {/* Bouton voir détails */}
+                  {!isRouteMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPoint(p);
+                      }}
+                      className="p-2 text-grey-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
+                      title="Voir les détails"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             );
