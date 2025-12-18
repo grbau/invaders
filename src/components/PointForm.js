@@ -5,7 +5,7 @@ import { usePoints } from '../contexts/PointsContext';
 
 export default function PointForm() {
   const { currentProfile } = useUser();
-  const { refreshPoints } = usePoints();
+  const { refreshPoints, allPoints } = usePoints();
 
   const initialFormState = {
     name: '',
@@ -19,6 +19,7 @@ export default function PointForm() {
   const [form, setForm] = useState(initialFormState);
   const [suggestions, setSuggestions] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nameError, setNameError] = useState('');
   const skipFetchRef = useRef(false);
 
   const fetchSuggestions = async (query) => {
@@ -62,11 +63,40 @@ export default function PointForm() {
     setSuggestions([]);
   };
 
+  // Vérifier si le nom existe déjà
+  const checkDuplicateName = (name) => {
+    if (!name.trim()) {
+      setNameError('');
+      return false;
+    }
+    const isDuplicate = allPoints.some(
+      point => point.name.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+    if (isDuplicate) {
+      setNameError('Ce pixel existe déjà');
+      return true;
+    }
+    setNameError('');
+    return false;
+  };
+
+  // Gérer le changement de nom
+  const handleNameChange = (e) => {
+    const newName = e.target.value;
+    setForm({ ...form, name: newName });
+    checkDuplicateName(newName);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!currentProfile) {
       alert('Veuillez sélectionner un profil');
+      return;
+    }
+
+    // Vérifier les doublons avant soumission
+    if (checkDuplicateName(form.name)) {
       return;
     }
 
@@ -102,7 +132,7 @@ export default function PointForm() {
   return (
     <form onSubmit={handleSubmit}>
       {/* Layout horizontal sur desktop, vertical sur mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
         {/* Nom du point */}
         <div className="md:col-span-2">
           <label className={labelClasses}>
@@ -112,9 +142,19 @@ export default function PointForm() {
             type="text"
             placeholder="Mon point"
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className={inputClasses}
+            onChange={handleNameChange}
+            className={`${inputClasses} ${nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
           />
+          <div className="h-5 mt-1">
+            {nameError && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                {nameError}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Adresse */}
@@ -129,9 +169,10 @@ export default function PointForm() {
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             className={inputClasses}
           />
+          <div className="h-5 mt-1"></div>
 
           {suggestions.length > 0 && (
-            <ul className="absolute z-20 w-full bg-white border border-grey-300 shadow-lg mt-1 max-h-48 overflow-y-auto custom-scrollbar">
+            <ul className="absolute z-20 w-full bg-white border border-grey-300 shadow-lg mt-1 max-h-48 overflow-y-auto custom-scrollbar top-[calc(100%-1.5rem)]">
               {suggestions.map((s, idx) => (
                 <li
                   key={idx}
@@ -164,6 +205,7 @@ export default function PointForm() {
             required
             className={inputClasses}
           />
+          <div className="h-5 mt-1"></div>
         </div>
 
         {/* Longitude */}
@@ -180,6 +222,7 @@ export default function PointForm() {
             required
             className={inputClasses}
           />
+          <div className="h-5 mt-1"></div>
         </div>
 
         {/* Nombre de points */}
@@ -194,6 +237,7 @@ export default function PointForm() {
             onChange={(e) => setForm({ ...form, points: e.target.value })}
             className={inputClasses}
           />
+          <div className="h-5 mt-1"></div>
         </div>
 
         {/* Statut */}
@@ -225,17 +269,19 @@ export default function PointForm() {
               Flashé
             </button>
           </div>
+          <div className="h-5 mt-1"></div>
         </div>
 
         {/* Bouton submit */}
         <div className="md:col-span-1">
           <button
             type="submit"
-            disabled={isSubmitting || !currentProfile}
+            disabled={isSubmitting || !currentProfile || !!nameError}
             className="w-full h-11 bg-primary-500 hover:bg-primary-600 text-white font-medium btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Ajout...' : 'Ajouter'}
           </button>
+          <div className="h-5 mt-1"></div>
         </div>
       </div>
     </form>
