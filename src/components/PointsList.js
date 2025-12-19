@@ -40,7 +40,6 @@ export default function PointsList({ filter, setFilter, onSelectPoint }) {
   };
 
   // Calculer le total des points et pixels flashés
-  console.log(allPoints);
   const totalPoints = allPoints
     .filter(p => p.status !== 'to_select')
     .reduce((sum, p) => sum + (p.points || 0), 0);
