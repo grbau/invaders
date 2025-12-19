@@ -72,6 +72,18 @@ export default function Layout({ children }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Bloquer le scroll du body quand le menu mobile est ouvert
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-paris-background flex items-center justify-center">
@@ -84,13 +96,18 @@ export default function Layout({ children }) {
     <div className="min-h-screen bg-paris-background">
       {/* Header */}
       <header className="sticky top-0 z-50 shadow-md">
-        {/* Background animé - slide de gauche sur mobile, de haut en bas sur desktop */}
+        {/* Background animé - slide de haut en bas pour scroll, de gauche pour menu mobile */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Background pour le scroll (haut en bas) */}
           <div
             className={`absolute inset-0 bg-white/95 backdrop-blur-sm transition-transform duration-300 ease-out ${
-              isScrolled || mobileMenuOpen
-                ? 'translate-x-0 md:translate-y-0'
-                : '-translate-x-full md:translate-x-0 md:-translate-y-full'
+              isScrolled ? 'translate-y-0' : '-translate-y-full'
+            }`}
+          />
+          {/* Background pour le menu mobile (gauche à droite) - uniquement sur mobile */}
+          <div
+            className={`md:hidden absolute inset-0 bg-white/95 backdrop-blur-sm transition-transform duration-300 ease-out ${
+              mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
             }`}
           />
         </div>
@@ -233,6 +250,14 @@ export default function Layout({ children }) {
           </div>
         </div>
       </div>
+
+      {/* Overlay pour fermer le menu mobile */}
+      <div
+        className={`md:hidden fixed inset-0 top-16 z-30 bg-black/50 transition-opacity duration-300 ${
+          mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
 
       {/* Click outside to close profile menu */}
       {profileMenuOpen && (
