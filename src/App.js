@@ -62,12 +62,12 @@ function App() {
         {/* Mobile: empilé (Liste -> Carte) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Liste des points */}
-          <div className="order-1 h-[400px] lg:h-[560px]">
+          <div className="order-1 h-[500px] sm:h-[550px] lg:h-[560px]">
             <PointsList filter={filter} setFilter={setFilter} onSelectPoint={setSelectedPointId} />
           </div>
 
           {/* Carte */}
-          <div className="order-2 h-[400px] lg:h-[560px]">
+          <div className="order-2 h-[400px] sm:h-[450px] lg:h-[560px]">
             <div className="bg-white shadow-card overflow-hidden h-full flex flex-col">
               <div className="bg-primary-500 text-white px-4 py-3 font-medium">
                 Carte
@@ -91,9 +91,9 @@ function App() {
         {/* Export des données */}
         <DataExport />
 
-        {/* Bouton d'installation PWA - visible uniquement si disponible */}
+        {/* Bouton d'installation PWA - visible uniquement sur mobile si disponible */}
         {canInstall && (
-          <div className="fixed bottom-4 right-4 z-50">
+          <div className="fixed bottom-4 right-4 z-50 lg:hidden">
             <button
               onClick={showPrompt}
               className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all"

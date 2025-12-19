@@ -159,7 +159,7 @@ export default function DataExport() {
 
   return (
     <div className={`bg-white shadow-card p-6 ${shouldRemind ? 'ring-2 ring-amber-200' : ''}`}>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex-1">
           <h2 className="text-h2 text-grey-700 flex items-center gap-2">
             Sauvegarder mes données
@@ -184,12 +184,12 @@ export default function DataExport() {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-row gap-2 w-full sm:w-auto">
           {/* Export JSON complet */}
           <button
             onClick={exportAllData}
             disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {exporting ? (
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -208,7 +208,7 @@ export default function DataExport() {
           <button
             onClick={exportAsCSV}
             disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 bg-grey-100 hover:bg-grey-200 text-grey-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-grey-100 hover:bg-grey-200 text-grey-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {exporting ? (
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
