@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { supabase } from '../services/supabaseClient';
 
@@ -7,18 +7,28 @@ export default function UserRanking() {
   const [rankings, setRankings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
+  const channelRef = useRef(null);
 
-  // Filtrer les profils valides (pas les IDs par défaut)
-  const validProfiles = profiles.filter(p => !p.id.startsWith('default-'));
+  // Filtrer les profils valides (pas les IDs par défaut) - mémorisé
+  const validProfiles = useMemo(() =>
+    profiles.filter(p => !p.id.startsWith('default-')),
+    [profiles]
+  );
 
-  // Fonction pour charger les statistiques
-  const fetchRankings = useCallback(async () => {
+  // IDs des profils valides pour la dépendance stable
+  const profileIds = useMemo(() =>
+    validProfiles.map(p => p.id).join(','),
+    [validProfiles]
+  );
+
+  // Ref pour stocker la fonction fetch (évite les problèmes de dépendance)
+  const fetchRankingsRef = useRef();
+
+  fetchRankingsRef.current = async () => {
     if (validProfiles.length === 0) {
       setLoading(false);
       return;
     }
-
-    setLoading(true);
 
     try {
       const rankingsData = [];
@@ -56,28 +66,34 @@ export default function UserRanking() {
     } finally {
       setLoading(false);
     }
-  }, [validProfiles]);
+  };
 
-  // Charger les données au montage et s'abonner aux changements
+  // Charger les données quand les profils changent
   useEffect(() => {
-    fetchRankings();
+    setLoading(true);
+    fetchRankingsRef.current();
+  }, [profileIds]);
 
-    // S'abonner aux changements en temps réel sur la table points
+  // S'abonner aux changements en temps réel
+  useEffect(() => {
     const channel = supabase
       .channel('ranking-realtime')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'points' },
         () => {
-          // Rafraîchir le classement quand un point est ajouté/modifié/supprimé
-          fetchRankings();
+          fetchRankingsRef.current();
         }
       )
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
-  }, [fetchRankings]);
+  }, []);
 
   if (validProfiles.length < 2) {
     return null; // Pas assez de profils pour un classement
