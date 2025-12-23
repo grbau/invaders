@@ -14,6 +14,8 @@ export default function PointForm() {
     longitude: '',
     points: '',
     status: 'to_select',
+    destroyed: false,
+    description: '',
   };
 
   const [form, setForm] = useState(initialFormState);
@@ -134,6 +136,8 @@ export default function PointForm() {
           longitude: parseFloat(form.longitude),
           points: parseInt(form.points) || 0,
           status: form.status,
+          destroyed: form.destroyed,
+          description: form.description,
           profile_id: currentProfile.id,
         }]);
 
@@ -155,9 +159,9 @@ export default function PointForm() {
   return (
     <form onSubmit={handleSubmit}>
       {/* Layout horizontal sur desktop, vertical sur mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
         {/* Nom du point */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-1">
           <label className={labelClasses}>
             Nom
           </label>
@@ -181,7 +185,7 @@ export default function PointForm() {
         </div>
 
         {/* Adresse */}
-        <div className="relative md:col-span-3" ref={addressContainerRef}>
+        <div className="relative md:col-span-1" ref={addressContainerRef}>
           <label className={labelClasses}>
             Adresse
           </label>
@@ -216,7 +220,7 @@ export default function PointForm() {
         </div>
 
         {/* Latitude */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-1">
           <label className={labelClasses}>
             Latitude
           </label>
@@ -233,7 +237,7 @@ export default function PointForm() {
         </div>
 
         {/* Longitude */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-1">
           <label className={labelClasses}>
             Longitude
           </label>
@@ -265,7 +269,7 @@ export default function PointForm() {
         </div>
 
         {/* Statut */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-1">
           <label className={labelClasses}>
             Statut
           </label>
@@ -296,16 +300,49 @@ export default function PointForm() {
           <div className="h-5 mt-1"></div>
         </div>
 
-        {/* Bouton submit */}
+        {/* Description */}
         <div className="md:col-span-1">
+          <label className={labelClasses}>
+            Description
+          </label>
+          <input
+            type="text"
+            placeholder="Description du pixel (optionnel)..."
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className={inputClasses}
+          />
+          <div className="h-5 mt-1"></div>
+        </div>
+
+        {/* Détruit */}
+        <div className="md:col-span-1">
+          <label className={labelClasses}>
+            Détruit
+          </label>
+          <div className="flex items-center h-11">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.destroyed}
+                onChange={(e) => setForm({ ...form, destroyed: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-grey-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-grey-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-error-500"></div>
+            </label>
+          </div>
+          <div className="h-5 mt-1"></div>
+        </div>
+
+        {/* Bouton submit */}
+        <div className="md:col-span-4">
           <button
             type="submit"
             disabled={isSubmitting || !currentProfile || !!nameError}
-            className="w-full h-11 bg-primary-500 hover:bg-primary-600 text-white font-medium btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-11 px-8 bg-primary-500 hover:bg-primary-600 text-white font-medium btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Ajout...' : 'Ajouter'}
           </button>
-          <div className="h-5 mt-1"></div>
         </div>
       </div>
     </form>

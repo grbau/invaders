@@ -484,9 +484,16 @@ export default function PointsList({ filter, setFilter, selectedCity, setSelecte
 
                       {/* Contenu */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-grey-700 text-base truncate">
-                          {p.name || 'Point sans nom'}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-grey-700 text-base truncate">
+                            {p.name || 'Point sans nom'}
+                          </h3>
+                          {p.destroyed && (
+                            <span className="flex-shrink-0 bg-error-50 text-error-700 px-2 py-0.5 text-xs font-medium rounded">
+                              Détruit
+                            </span>
+                          )}
+                        </div>
                         {p.address && (
                           <p className="text-sm text-grey-500 mt-1 truncate">
                             {p.address}

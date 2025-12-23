@@ -14,6 +14,8 @@ export default function PointDetailPanel({ point, onClose }) {
     longitude: '',
     points: '',
     status: 'to_select',
+    destroyed: false,
+    description: '',
   });
   const [suggestions, setSuggestions] = useState([]);
   const skipFetchRef = useRef(false);
@@ -45,6 +47,8 @@ export default function PointDetailPanel({ point, onClose }) {
         longitude: point.longitude?.toString() || '',
         points: point.points?.toString() || '0',
         status: point.status || 'to_select',
+        destroyed: point.destroyed || false,
+        description: point.description || '',
       });
       setIsEditing(false);
     }
@@ -138,6 +142,8 @@ export default function PointDetailPanel({ point, onClose }) {
           longitude: parseFloat(form.longitude),
           points: parseInt(form.points) || 0,
           status: form.status,
+          destroyed: form.destroyed,
+          description: form.description,
         })
         .eq('id', point.id);
 
@@ -316,6 +322,35 @@ export default function PointDetailPanel({ point, onClose }) {
                 </div>
               </div>
 
+              {/* Détruit */}
+              <div>
+                <label className={labelClasses}>Détruit</label>
+                <div className="flex items-center h-11">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.destroyed}
+                      onChange={(e) => setForm({ ...form, destroyed: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-grey-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-grey-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-error-500"></div>
+                    <span className="ml-3 text-sm text-grey-700">{form.destroyed ? 'Oui' : 'Non'}</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className={labelClasses}>Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-grey-300 bg-white text-grey-700 placeholder-grey-400 input-focus transition-all resize-none"
+                  placeholder="Description du pixel (optionnel)..."
+                />
+              </div>
+
               {/* Actions */}
               <div className="flex gap-3 pt-4">
                 <button
@@ -337,7 +372,7 @@ export default function PointDetailPanel({ point, onClose }) {
           ) : (
             <div className="space-y-6">
               {/* Statut badge */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className={`px-3 py-1.5 text-sm font-medium ${
                   form.status === 'selected'
                     ? 'bg-success-50 text-success-700'
@@ -348,6 +383,11 @@ export default function PointDetailPanel({ point, onClose }) {
                 <span className="bg-primary-100 text-primary-700 px-3 py-1.5 text-sm font-medium">
                   {form.points || 0} pts
                 </span>
+                {form.destroyed && (
+                  <span className="bg-error-50 text-error-700 px-3 py-1.5 text-sm font-medium">
+                    Détruit
+                  </span>
+                )}
               </div>
 
               {/* Nom */}
@@ -384,6 +424,14 @@ export default function PointDetailPanel({ point, onClose }) {
                   Voir sur Google Maps
                 </a>
               </div>
+
+              {/* Description */}
+              {form.description && (
+                <div>
+                  <div className={labelClasses}>Description</div>
+                  <p className="text-grey-700 whitespace-pre-wrap">{form.description}</p>
+                </div>
+              )}
 
               {/* Date de création */}
               {point.created_at && (
