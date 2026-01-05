@@ -15,7 +15,8 @@ export default function UserComparison() {
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferMessage, setTransferMessage] = useState(null);
   const [transferStatus, setTransferStatus] = useState('keep'); // 'keep', 'to_select', 'selected'
-
+  const [showOnlyDifferentStatus, setShowOnlyDifferentStatus] = useState(false);
+  
   // Charger les points pour les profils sélectionnés
   useEffect(() => {
     const fetchPointsForProfiles = async () => {
@@ -265,6 +266,11 @@ export default function UserComparison() {
     return null; // Pas assez de profils pour comparer
   }
 
+  const hasDifferentStatuses = (point) => {
+    const statuses =Object.values(point.statusByProfile);
+    return new Set(statuses).size > 1;
+  }
+
   return (
     <div className="bg-white shadow-card p-6">
       {/* Header cliquable pour expand/collapse */}
@@ -368,10 +374,21 @@ export default function UserComparison() {
               {/* Tableau des points communs */}
               {comparisonData.commonPoints.length > 0 && (
                 <div>
-                  <h3 className="text-base font-semibold text-grey-700 mb-3 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    Points en commun ({comparisonData.commonPoints.length})
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <h3 className="text-base font-semibold text-grey-700 flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      Points en commun ({comparisonData.commonPoints.length})
+                    </h3>
+                    <button
+                      onClick={() => setShowOnlyDifferentStatus(!showOnlyDifferentStatus)}
+                      className={`text-sm px-3 py-1.5 rounded-lg transition-colors w-fit ${
+                        showOnlyDifferentStatus
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-grey-100 text-grey-600 hover:bg-grey-200'
+                        }`}>
+                      {showOnlyDifferentStatus ? 'Tous les points' : 'Statuts différents'}
+                    </button>
+                  </div>  
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -384,6 +401,7 @@ export default function UserComparison() {
                       </thead>
                       <tbody className="divide-y divide-grey-100">
                         {comparisonData.commonPoints
+                        .filter(point => !showOnlyDifferentStatus || hasDifferentStatuses(point))
                         .slice().sort((a, b) => a.name.localeCompare(b.name))
                         .map((point, idx) => (
                           <tr key={idx} className="hover:bg-grey-50">
@@ -441,7 +459,7 @@ export default function UserComparison() {
               {/* Tableau des différences */}
               {comparisonData.differences.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex sm:flex-row sm:items-center sm:justify-between flex-col mb-3 gap-2">
                     <h3 className="text-base font-semibold text-grey-700 flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-amber-500"></div>
                       Différences ({comparisonData.differences.length})
