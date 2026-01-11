@@ -2,6 +2,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import L from 'leaflet';
 import { usePoints } from '../contexts/PointsContext';
+import { useUser } from '../contexts/UserContext';
 import { getCityFromName, CITY_COORDINATES } from '../constants/cities';
 
 // Couleurs des markers (correspondant aux variables CSS)
@@ -37,6 +38,109 @@ const createCustomIcon = (color) => {
     iconSize: [24, 24],
     iconAnchor: [12, 12],
     popupAnchor: [0, -12],
+  });
+};
+
+// Générer le chemin de l'image basé sur le nom du profil (même logique que Layout.js)
+const getProfileImagePath = (name) => {
+  if (!name) return null;
+  const normalized = name.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-');
+  return `/users/${normalized}.jpg`;
+};
+
+// Créer une icône pour la position de l'utilisateur avec son image de profil
+const createUserLocationIcon = (profile, hasImage) => {
+  const size = 36;
+  const imagePath = getProfileImagePath(profile?.name);
+
+  if (hasImage && imagePath) {
+    return L.divIcon({
+      className: 'user-location-marker',
+      html: `
+        <div style="
+          position: relative;
+          width: ${size}px;
+          height: ${size}px;
+        ">
+          <div style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: ${size + 16}px;
+            height: ${size + 16}px;
+            background-color: rgba(59, 130, 246, 0.2);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+          "></div>
+          <img
+            src="${imagePath}"
+            alt="${profile.name}"
+            style="
+              width: ${size}px;
+              height: ${size}px;
+              border-radius: 50%;
+              border: 3px solid #3B82F6;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+              object-fit: cover;
+              position: relative;
+              z-index: 1;
+            "
+          />
+        </div>
+      `,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      popupAnchor: [0, -size / 2],
+    });
+  }
+
+  // Fallback avec les initiales si pas d'image
+  return L.divIcon({
+    className: 'user-location-marker',
+    html: `
+      <div style="
+        position: relative;
+        width: ${size}px;
+        height: ${size}px;
+      ">
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: ${size + 16}px;
+          height: ${size + 16}px;
+          background-color: rgba(59, 130, 246, 0.2);
+          border-radius: 50%;
+          animation: pulse 2s infinite;
+        "></div>
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          border: 3px solid #3B82F6;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          background-color: ${profile?.color || '#3B82F6'};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: 14px;
+          position: relative;
+          z-index: 1;
+        ">
+          ${profile?.initials || '?'}
+        </div>
+      </div>
+    `,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
   });
 };
 
@@ -130,6 +234,72 @@ function InitialCenter({ points }) {
 }
 
 
+// Composant pour afficher la position de l'utilisateur
+function UserLocationMarker({ profile }) {
+  const [position, setPosition] = useState(null);
+  const [hasImage, setHasImage] = useState(false);
+
+  // Vérifier si l'image du profil existe
+  useEffect(() => {
+    if (!profile?.name) {
+      setHasImage(false);
+      return;
+    }
+
+    const imagePath = getProfileImagePath(profile.name);
+    if (!imagePath) {
+      setHasImage(false);
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => setHasImage(true);
+    img.onerror = () => setHasImage(false);
+    img.src = imagePath;
+  }, [profile?.name]);
+
+  // Recréer l'icône quand le profil ou hasImage change
+  const userIcon = useMemo(() => {
+    return createUserLocationIcon(profile, hasImage);
+  }, [profile, hasImage]);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    // Suivre la position en temps réel
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setPosition([pos.coords.latitude, pos.coords.longitude]);
+      },
+      (error) => {
+        console.warn('Erreur de géolocalisation:', error.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
+
+  if (!position || !profile) return null;
+
+  return (
+    <Marker position={position} icon={userIcon}>
+      <Popup>
+        <div className="p-1 text-center">
+          <div className="font-semibold text-grey-700 text-base">
+            {profile.name || 'Ma position'}
+          </div>
+          <div className="text-xs text-grey-500 mt-1">
+            Vous êtes ici
+          </div>
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
 // Composant pour recentrer la carte sur une ville
 function CenterOnCity({ selectedCity, points }) {
   const map = useMap();
@@ -159,6 +329,7 @@ function CenterOnCity({ selectedCity, points }) {
 
 export default function MapView({ filter, selectedCity, selectedPointId, onClosePopup, onMarkerClick }) {
   const { allPoints } = usePoints();
+  const { currentProfile } = useUser();
   const [points, setPoints] = useState([]);
   const markerRefs = useRef({});
 
@@ -207,6 +378,7 @@ export default function MapView({ filter, selectedCity, selectedPointId, onClose
       <FlyToPoint point={selectedPoint} />
       <InitialCenter points={allPoints} />
       <CenterOnCity selectedCity={selectedCity} points={allPoints} />
+      <UserLocationMarker profile={currentProfile} />
       {points.map(p => (
         <Marker
           key={p.id}
