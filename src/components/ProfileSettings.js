@@ -308,21 +308,22 @@ function ProfileCard({ profile, onUpdate }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-grey-200 p-6">
-      <div className="flex items-start gap-4">
+    <div className="bg-white rounded-xl shadow-sm border border-grey-200 p-4 sm:p-6">
+      {/* Header avec avatar et nom - toujours horizontal */}
+      <div className="flex items-center gap-4">
         {/* Avatar */}
         <div className="flex-shrink-0">
           {avatarUrl && !imageError ? (
             <img
               src={avatarUrl}
               alt={profile.name}
-              className="w-16 h-16 rounded-full object-cover border-4"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-4"
               style={{ borderColor: color }}
               onError={() => setImageError(true)}
             />
           ) : (
             <div
-              className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold"
               style={{ backgroundColor: color }}
             >
               {profile.initials}
@@ -330,103 +331,107 @@ function ProfileCard({ profile, onUpdate }) {
           )}
         </div>
 
-        {/* Info */}
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-grey-800">{profile.name}</h3>
+        {/* Nom et initiales */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-grey-800 truncate">{profile.name}</h3>
           <p className="text-sm text-grey-500">Initiales: {profile.initials}</p>
-
-          {!isEditing ? (
+          {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
+              className="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
             >
               Modifier
             </button>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {/* Sélection de couleur avec Color Picker */}
-              <ColorPicker color={color} onChange={setColor} />
-
-              {/* Upload d'image */}
-              <div>
-                <label className="block text-sm font-medium text-grey-700 mb-2">
-                  Photo de profil
-                </label>
-
-                {/* Input file caché */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-
-                {/* Aperçu et boutons */}
-                <div className="flex items-center gap-3">
-                  {/* Aperçu */}
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Aperçu"
-                      className="w-12 h-12 rounded-full object-cover border-2"
-                      style={{ borderColor: color }}
-                    />
-                  ) : (
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
-                      style={{ backgroundColor: color }}
-                    >
-                      {profile.initials}
-                    </div>
-                  )}
-
-                  {/* Boutons */}
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="px-3 py-1.5 text-sm border border-grey-300 rounded-lg hover:bg-grey-50 disabled:opacity-50"
-                    >
-                      {uploading ? 'Upload...' : 'Choisir une image'}
-                    </button>
-                    {avatarUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setAvatarUrl('')}
-                        className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
-                      >
-                        Supprimer
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className="mt-2 text-xs text-grey-400">
-                  JPG, PNG ou GIF. Max 2 Mo.
-                </p>
-              </div>
-
-              {/* Boutons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 disabled:opacity-50"
-                >
-                  {saving ? 'Enregistrement...' : 'Enregistrer'}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="px-4 py-2 bg-grey-100 text-grey-700 text-sm font-medium rounded-lg hover:bg-grey-200"
-                >
-                  Annuler
-                </button>
-              </div>
-            </div>
           )}
         </div>
       </div>
+
+      {/* Formulaire d'édition - pleine largeur sous le header */}
+      {isEditing && (
+        <div className="mt-4 pt-4 border-t border-grey-100 space-y-4">
+          {/* Sélection de couleur avec Color Picker */}
+          <ColorPicker color={color} onChange={setColor} />
+
+          {/* Upload d'image */}
+          <div>
+            <label className="block text-sm font-medium text-grey-700 mb-2">
+              Photo de profil
+            </label>
+
+            {/* Input file caché */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            {/* Aperçu et boutons */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              {/* Aperçu */}
+              <div className="flex items-center gap-3">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Aperçu"
+                    className="w-12 h-12 rounded-full object-cover border-2 flex-shrink-0"
+                    style={{ borderColor: color }}
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                    style={{ backgroundColor: color }}
+                  >
+                    {profile.initials}
+                  </div>
+                )}
+
+                {/* Boutons d'upload - sur la même ligne que l'aperçu */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="px-3 py-1.5 text-sm border border-grey-300 rounded-lg hover:bg-grey-50 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {uploading ? 'Upload...' : 'Choisir'}
+                  </button>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setAvatarUrl('')}
+                      className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 whitespace-nowrap"
+                    >
+                      Supprimer
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-grey-400">
+              JPG, PNG ou GIF. Max 2 Mo.
+            </p>
+          </div>
+
+          {/* Boutons d'action */}
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 sm:flex-none px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 disabled:opacity-50"
+            >
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+            <button
+              onClick={handleCancel}
+              className="flex-1 sm:flex-none px-4 py-2 bg-grey-100 text-grey-700 text-sm font-medium rounded-lg hover:bg-grey-200"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -434,11 +439,27 @@ function ProfileCard({ profile, onUpdate }) {
 export default function ProfileSettings({ onClose }) {
   const { profiles, updateProfile } = useUser();
 
-  // Bloquer le scroll du body quand la modal est ouverte
+  // Bloquer le scroll du body quand la modal est ouverte (fix mobile)
   useEffect(() => {
+    // Sauvegarder la position de scroll actuelle
+    const scrollY = window.scrollY;
+
+    // Bloquer le body
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
     document.body.style.overflow = 'hidden';
+
     return () => {
+      // Restaurer le body
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
       document.body.style.overflow = '';
+      // Restaurer la position de scroll
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
