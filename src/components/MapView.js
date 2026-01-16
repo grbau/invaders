@@ -41,22 +41,12 @@ const createCustomIcon = (color) => {
   });
 };
 
-// Générer le chemin de l'image basé sur le nom du profil (même logique que Layout.js)
-const getProfileImagePath = (name) => {
-  if (!name) return null;
-  const normalized = name.toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, '-');
-  return `/users/${normalized}.jpg`;
-};
-
 // Créer une icône pour la position de l'utilisateur avec son image de profil
-const createUserLocationIcon = (profile, hasImage) => {
+const createUserLocationIcon = (profile) => {
   const size = 36;
-  const imagePath = getProfileImagePath(profile?.name);
+  const avatarUrl = profile?.avatar_url;
 
-  if (hasImage && imagePath) {
+  if (avatarUrl) {
     return L.divIcon({
       className: 'user-location-marker',
       html: `
@@ -77,7 +67,7 @@ const createUserLocationIcon = (profile, hasImage) => {
             animation: pulse 2s infinite;
           "></div>
           <img
-            src="${imagePath}"
+            src="${avatarUrl}"
             alt="${profile.name}"
             style="
               width: ${size}px;
@@ -237,31 +227,11 @@ function InitialCenter({ points }) {
 // Composant pour afficher la position de l'utilisateur
 function UserLocationMarker({ profile }) {
   const [position, setPosition] = useState(null);
-  const [hasImage, setHasImage] = useState(false);
 
-  // Vérifier si l'image du profil existe
-  useEffect(() => {
-    if (!profile?.name) {
-      setHasImage(false);
-      return;
-    }
-
-    const imagePath = getProfileImagePath(profile.name);
-    if (!imagePath) {
-      setHasImage(false);
-      return;
-    }
-
-    const img = new Image();
-    img.onload = () => setHasImage(true);
-    img.onerror = () => setHasImage(false);
-    img.src = imagePath;
-  }, [profile?.name]);
-
-  // Recréer l'icône quand le profil ou hasImage change
+  // Recréer l'icône quand le profil change (avatar_url ou couleur/initiales)
   const userIcon = useMemo(() => {
-    return createUserLocationIcon(profile, hasImage);
-  }, [profile, hasImage]);
+    return createUserLocationIcon(profile);
+  }, [profile]);
 
   useEffect(() => {
     if (!navigator.geolocation) return;

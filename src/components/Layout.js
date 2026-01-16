@@ -1,47 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
+import ProfileSettings from './ProfileSettings';
 
-// Composant Avatar qui affiche la photo si elle existe, sinon les initiales
+// Composant Avatar qui affiche l'avatar_url de la BDD ou les initiales
 function ProfileAvatar({ profile, size = 'md' }) {
-  const [hasImage, setHasImage] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
-  // Générer le chemin de l'image basé sur le nom du profil (en minuscules, sans accents)
-  const getImagePath = (name) => {
-    if (!name) return null;
-    // Convertir en minuscules et retirer les accents
-    const normalized = name.toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, '-');
-    return `/users/${normalized}.jpg`;
-  };
-
-  const imagePath = getImagePath(profile?.name);
+  const avatarUrl = profile?.avatar_url;
   const sizeClasses = size === 'md' ? 'w-10 h-10' : 'w-8 h-8';
   const textSize = size === 'md' ? 'font-medium' : 'text-sm font-medium';
 
+  // Reset error state when avatar_url changes
   useEffect(() => {
-    if (!imagePath) return;
+    setImageError(false);
+  }, [avatarUrl]);
 
-    // Vérifier si l'image existe
-    const img = new Image();
-    img.onload = () => {
-      setHasImage(true);
-      setImageLoaded(true);
-    };
-    img.onerror = () => {
-      setHasImage(false);
-    };
-    img.src = imagePath;
-  }, [imagePath]);
-
-  if (hasImage && imageLoaded) {
+  if (avatarUrl && !imageError) {
     return (
       <img
-        src={imagePath}
+        src={avatarUrl}
         alt={profile?.name}
         className={`${sizeClasses} rounded-full object-cover`}
+        onError={() => setImageError(true)}
       />
     );
   }
@@ -59,6 +39,7 @@ function ProfileAvatar({ profile, size = 'md' }) {
 export default function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { profiles, currentProfile, switchProfile, loading } = useUser();
 
@@ -163,6 +144,21 @@ export default function Layout({ children }) {
                   {/* Séparateur */}
                   <div className="border-t border-grey-200 my-2" />
 
+                  {/* Bouton gérer les profils */}
+                  <button
+                    onClick={() => {
+                      setShowProfileSettings(true);
+                      setProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-grey-50 transition-colors text-grey-700"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm">Gérer les profils</span>
+                  </button>
+
                   {/* Bouton de déconnexion */}
                   <button
                     onClick={() => {
@@ -233,8 +229,23 @@ export default function Layout({ children }) {
             ))}
           </div>
 
-          {/* Bouton de déconnexion mobile */}
-          <div className="border-t border-grey-200 mt-4 pt-4">
+          {/* Bouton gérer les profils mobile */}
+          <div className="border-t border-grey-200 mt-4 pt-4 space-y-1">
+            <button
+              onClick={() => {
+                setShowProfileSettings(true);
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-grey-50 transition-colors text-grey-700"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="text-sm font-medium">Gérer les profils</span>
+            </button>
+
+            {/* Bouton de déconnexion mobile */}
             <button
               onClick={() => {
                 localStorage.removeItem('sessionExpiresAt');
@@ -271,6 +282,11 @@ export default function Layout({ children }) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
+
+      {/* Modal de gestion des profils */}
+      {showProfileSettings && (
+        <ProfileSettings onClose={() => setShowProfileSettings(false)} />
+      )}
     </div>
   );
 }
