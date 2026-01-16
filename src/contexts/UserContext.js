@@ -63,11 +63,41 @@ export function UserProvider({ children }) {
     }
   };
 
+  const updateProfile = async (profileId, updates) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', profileId);
+
+      if (error) {
+        console.error('Erreur lors de la mise à jour du profil:', error);
+        return false;
+      }
+
+      // Mettre à jour l'état local
+      setProfiles(prev => prev.map(p =>
+        p.id === profileId ? { ...p, ...updates } : p
+      ));
+
+      // Mettre à jour le profil courant si c'est celui qui est modifié
+      if (currentProfile?.id === profileId) {
+        setCurrentProfile(prev => ({ ...prev, ...updates }));
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du profil:', error);
+      return false;
+    }
+  };
+
   return (
     <UserContext.Provider value={{
       profiles,
       currentProfile,
       switchProfile,
+      updateProfile,
       loading
     }}>
       {children}

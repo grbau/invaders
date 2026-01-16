@@ -1,10 +1,5 @@
 import { useState } from 'react';
-
-// Hash SHA-256 des identifiants (pas en clair dans le code)
-const VALID_CREDENTIALS = {
-  usernameHash: 'ed7e75e5f71a0a35aa55286887c441915677178746b9dc6f6453748133506ad3',
-  passwordHash: 'c07abca79371b3a9105df817c4473d0c19b03ace5a6bbc4d34ebaebb6d575aba',
-};
+import { supabase } from '../services/supabaseClient';
 
 // Durée de session en millisecondes (1 jour)
 const SESSION_DURATION = 24 * 60 * 60 * 1000;
@@ -16,6 +11,21 @@ async function hashString(str) {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Vérifier les identifiants depuis la base de données
+async function verifyCredentials(usernameHash, passwordHash) {
+  const { data, error } = await supabase
+    .from('app_credentials')
+    .select('id')
+    .eq('username_hash', usernameHash)
+    .eq('password_hash', passwordHash)
+    .single();
+
+  if (error || !data) {
+    return false;
+  }
+  return true;
 }
 
 export default function LoginPage({ onLogin }) {
@@ -33,9 +43,10 @@ export default function LoginPage({ onLogin }) {
       const usernameHash = await hashString(credentials.username);
       const passwordHash = await hashString(credentials.password);
 
-      // Comparer les hash
-      if (usernameHash === VALID_CREDENTIALS.usernameHash &&
-          passwordHash === VALID_CREDENTIALS.passwordHash) {
+      // Vérifier les identifiants dans la base de données
+      const isValid = await verifyCredentials(usernameHash, passwordHash);
+
+      if (isValid) {
         const expiresAt = Date.now() + SESSION_DURATION;
         localStorage.setItem('sessionExpiresAt', expiresAt.toString());
         onLogin();
