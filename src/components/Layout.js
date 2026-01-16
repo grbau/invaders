@@ -41,7 +41,16 @@ export default function Layout({ children }) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [familyName, setFamilyName] = useState('Invaders');
   const { profiles, currentProfile, switchProfile, loading } = useUser();
+
+  // Récupérer le nom de famille depuis localStorage
+  useEffect(() => {
+    const storedFamilyName = localStorage.getItem('familyName');
+    if (storedFamilyName) {
+      setFamilyName(storedFamilyName);
+    }
+  }, []);
 
   // Détecter le scroll pour changer le style du header
   useEffect(() => {
@@ -101,7 +110,7 @@ export default function Layout({ children }) {
                 alt="Invaders"
                 className="h-10 w-auto"
               />
-              <span className="text-xl font-semibold text-grey-700">invaders baudic semete</span>
+              <span className="text-xl font-semibold text-grey-700">Invaders {familyName}</span>
             </div>
 
             {/* Desktop User Selector */}

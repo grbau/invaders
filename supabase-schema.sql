@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.app_credentials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username_hash VARCHAR(64) NOT NULL,
     password_hash VARCHAR(64) NOT NULL,
+    family_name VARCHAR(100) DEFAULT 'Famille',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -87,17 +88,20 @@ CREATE TABLE IF NOT EXISTS public.app_credentials (
 -- Activer RLS
 ALTER TABLE public.app_credentials ENABLE ROW LEVEL SECURITY;
 
--- Policies (lecture seule pour l'authentification)
+-- Policies (lecture et insertion pour l'authentification)
 DROP POLICY IF EXISTS "credentials_select" ON public.app_credentials;
+DROP POLICY IF EXISTS "credentials_insert" ON public.app_credentials;
 CREATE POLICY "credentials_select" ON public.app_credentials FOR SELECT USING (true);
+CREATE POLICY "credentials_insert" ON public.app_credentials FOR INSERT WITH CHECK (true);
 
 -- Insérer les identifiants (hachés SHA-256)
 -- Email: gregory.baudic@hotmail.fr (hashé)
 -- Mot de passe: identique à celui que vous utilisez actuellement
-INSERT INTO public.app_credentials (username_hash, password_hash)
+INSERT INTO public.app_credentials (username_hash, password_hash, family_name)
 VALUES (
     'ca73b9184d32b7fe2eab3a8b34e2bfeb7977aa827afc56d8be980cdde002b5a1',
-    'c07abca79371b3a9105df817c4473d0c19b03ace5a6bbc4d34ebaebb6d575aba'
+    'c07abca79371b3a9105df817c4473d0c19b03ace5a6bbc4d34ebaebb6d575aba',
+    'Baudic Semete'
 );
 
 -- ============================================
