@@ -10,6 +10,7 @@
 
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    credential_id UUID REFERENCES public.app_credentials(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     initials VARCHAR(2) NOT NULL,
     color VARCHAR(7) DEFAULT '#3B82F6',
@@ -17,6 +18,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Index pour améliorer les performances des requêtes par credential_id
+CREATE INDEX IF NOT EXISTS idx_profiles_credential_id ON public.profiles(credential_id);
 
 -- Activer RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -50,6 +54,7 @@ VALUES
 -- ============================================
 
 ALTER TABLE public.points
+    ADD COLUMN IF NOT EXISTS credential_id UUID REFERENCES public.app_credentials(id) ON DELETE CASCADE,
     ADD COLUMN IF NOT EXISTS name VARCHAR(255),
     ADD COLUMN IF NOT EXISTS address TEXT,
     ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0,
@@ -57,6 +62,7 @@ ALTER TABLE public.points
 
 -- Index pour améliorer les performances
 CREATE INDEX IF NOT EXISTS idx_points_profile_id ON public.points(profile_id);
+CREATE INDEX IF NOT EXISTS idx_points_credential_id ON public.points(credential_id);
 
 -- ============================================
 -- ÉTAPE 4: Activer le Realtime sur la table POINTS

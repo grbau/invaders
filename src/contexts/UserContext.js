@@ -3,48 +3,43 @@ import { supabase } from '../services/supabaseClient';
 
 const UserContext = createContext();
 
-// Profils par défaut (utilisés si la table n'existe pas encore)
-const DEFAULT_PROFILES = [
-  { id: 'default-1', name: 'Eva', initials: 'EV', color: '#EC4899' },
-  { id: 'default-2', name: 'Niel', initials: 'NI', color: '#3B82F6' },
-  { id: 'default-3', name: 'Clémentine', initials: 'CL', color: '#F59E0B' },
-  { id: 'default-4', name: 'Grégory', initials: 'GR', color: '#22C55E' },
-];
-
 export function UserProvider({ children }) {
-  const [profiles, setProfiles] = useState(DEFAULT_PROFILES);
-  const [currentProfile, setCurrentProfile] = useState(
-    DEFAULT_PROFILES.find(p => p.name === 'Clémentine') || DEFAULT_PROFILES[0]
-  );
+  const [profiles, setProfiles] = useState([]);
+  const [currentProfile, setCurrentProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [credentialId, setCredentialId] = useState(null);
 
   useEffect(() => {
+    // Récupérer le credential_id depuis localStorage
+    const storedCredentialId = localStorage.getItem('credentialId');
+    setCredentialId(storedCredentialId);
+
     const fetchProfiles = async () => {
+      if (!storedCredentialId) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
+          .eq('credential_id', storedCredentialId)
           .order('name');
 
         if (error) {
-          console.warn('Table profiles non trouvée, utilisation des profils par défaut:', error.message);
-          // Garder les profils par défaut
+          console.warn('Erreur lors du chargement des profils:', error.message);
           setLoading(false);
           return;
         }
 
         if (data && data.length > 0) {
-          // Dédupliquer les profils par nom (garder le premier de chaque nom)
-          const uniqueProfiles = data.filter((profile, index, self) =>
-            index === self.findIndex(p => p.name === profile.name)
-          );
-          setProfiles(uniqueProfiles);
+          setProfiles(data);
 
-          // Sélectionner Clémentine par défaut ou le profil sauvegardé
+          // Sélectionner le profil sauvegardé ou le premier
           const savedProfileId = localStorage.getItem('currentProfileId');
-          const savedProfile = uniqueProfiles.find(p => p.id === savedProfileId);
-          const defaultProfile = uniqueProfiles.find(p => p.name === 'Clémentine');
-          setCurrentProfile(savedProfile || defaultProfile || uniqueProfiles[0]);
+          const savedProfile = data.find(p => p.id === savedProfileId);
+          setCurrentProfile(savedProfile || data[0]);
         }
       } catch (error) {
         console.error('Erreur lors du chargement des profils:', error);
@@ -58,8 +53,43 @@ export function UserProvider({ children }) {
 
   const switchProfile = (profile) => {
     setCurrentProfile(profile);
-    if (profile.id && !profile.id.startsWith('default-')) {
+    if (profile.id) {
       localStorage.setItem('currentProfileId', profile.id);
+    }
+  };
+
+  const addProfile = async (name, initials, color) => {
+    if (!credentialId) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([{
+          credential_id: credentialId,
+          name,
+          initials,
+          color
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erreur lors de la création du profil:', error);
+        return null;
+      }
+
+      setProfiles(prev => [...prev, data]);
+
+      // Si c'est le premier profil, le sélectionner automatiquement
+      if (profiles.length === 0) {
+        setCurrentProfile(data);
+        localStorage.setItem('currentProfileId', data.id);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Erreur lors de la création du profil:', error);
+      return null;
     }
   };
 
@@ -92,12 +122,42 @@ export function UserProvider({ children }) {
     }
   };
 
+  const deleteProfile = async (profileId) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', profileId);
+
+      if (error) {
+        console.error('Erreur lors de la suppression du profil:', error);
+        return false;
+      }
+
+      setProfiles(prev => prev.filter(p => p.id !== profileId));
+
+      // Si c'était le profil courant, en sélectionner un autre
+      if (currentProfile?.id === profileId) {
+        const remaining = profiles.filter(p => p.id !== profileId);
+        setCurrentProfile(remaining[0] || null);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de la suppression du profil:', error);
+      return false;
+    }
+  };
+
   return (
     <UserContext.Provider value={{
       profiles,
       currentProfile,
+      credentialId,
       switchProfile,
+      addProfile,
       updateProfile,
+      deleteProfile,
       loading
     }}>
       {children}

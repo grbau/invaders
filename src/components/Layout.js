@@ -172,6 +172,9 @@ export default function Layout({ children }) {
                   <button
                     onClick={() => {
                       localStorage.removeItem('sessionExpiresAt');
+                      localStorage.removeItem('credentialId');
+                      localStorage.removeItem('familyName');
+                      localStorage.removeItem('currentProfileId');
                       window.location.reload();
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-red-50 transition-colors text-red-600"
@@ -258,6 +261,9 @@ export default function Layout({ children }) {
             <button
               onClick={() => {
                 localStorage.removeItem('sessionExpiresAt');
+                localStorage.removeItem('credentialId');
+                localStorage.removeItem('familyName');
+                localStorage.removeItem('currentProfileId');
                 window.location.reload();
               }}
               className="w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-red-50 transition-colors text-red-600"

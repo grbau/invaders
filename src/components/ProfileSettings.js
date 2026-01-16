@@ -436,8 +436,107 @@ function ProfileCard({ profile, onUpdate }) {
   );
 }
 
+// Formulaire pour ajouter un nouveau profil
+function AddProfileForm({ onAdd, onCancel }) {
+  const [name, setName] = useState('');
+  const [initials, setInitials] = useState('');
+  const [color, setColor] = useState('#3B82F6');
+  const [saving, setSaving] = useState(false);
+
+  // Générer automatiquement les initiales
+  useEffect(() => {
+    if (name) {
+      const words = name.trim().split(' ');
+      if (words.length >= 2) {
+        setInitials((words[0][0] + words[1][0]).toUpperCase());
+      } else if (words[0].length >= 2) {
+        setInitials(words[0].substring(0, 2).toUpperCase());
+      } else {
+        setInitials(words[0].toUpperCase());
+      }
+    }
+  }, [name]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !initials.trim()) return;
+
+    setSaving(true);
+    const success = await onAdd(name.trim(), initials.trim().substring(0, 2), color);
+    setSaving(false);
+
+    if (success) {
+      setName('');
+      setInitials('');
+      setColor('#3B82F6');
+      onCancel();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-grey-200 p-4 sm:p-6">
+      <h3 className="text-lg font-semibold text-grey-800 mb-4">Nouveau membre</h3>
+
+      <div className="space-y-4">
+        {/* Nom */}
+        <div>
+          <label className="block text-sm font-medium text-grey-700 mb-1">
+            Nom
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Prénom ou nom complet"
+            className="w-full px-3 py-2 border border-grey-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+          />
+        </div>
+
+        {/* Initiales */}
+        <div>
+          <label className="block text-sm font-medium text-grey-700 mb-1">
+            Initiales (2 caractères max)
+          </label>
+          <input
+            type="text"
+            value={initials}
+            onChange={(e) => setInitials(e.target.value.toUpperCase().substring(0, 2))}
+            placeholder="AB"
+            maxLength={2}
+            className="w-full px-3 py-2 border border-grey-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 uppercase"
+            required
+          />
+        </div>
+
+        {/* Couleur */}
+        <ColorPicker color={color} onChange={setColor} />
+
+        {/* Boutons */}
+        <div className="flex gap-2 pt-2">
+          <button
+            type="submit"
+            disabled={saving || !name.trim() || !initials.trim()}
+            className="flex-1 sm:flex-none px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 disabled:opacity-50"
+          >
+            {saving ? 'Création...' : 'Créer'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 sm:flex-none px-4 py-2 bg-grey-100 text-grey-700 text-sm font-medium rounded-lg hover:bg-grey-200"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
 export default function ProfileSettings({ onClose }) {
-  const { profiles, updateProfile } = useUser();
+  const { profiles, updateProfile, addProfile } = useUser();
+  const [showAddForm, setShowAddForm] = useState(false);
 
   // Bloquer le scroll du body quand la modal est ouverte (fix mobile)
   useEffect(() => {
@@ -489,6 +588,13 @@ export default function ProfileSettings({ onClose }) {
 
           {/* Content */}
           <div className="p-6 space-y-4">
+            {profiles.length === 0 && !showAddForm && (
+              <div className="text-center py-8 text-grey-500">
+                <p className="mb-4">Aucun membre dans votre famille.</p>
+                <p className="text-sm">Ajoutez votre premier membre pour commencer.</p>
+              </div>
+            )}
+
             {profiles.map((profile) => (
               <ProfileCard
                 key={profile.id}
@@ -496,6 +602,24 @@ export default function ProfileSettings({ onClose }) {
                 onUpdate={updateProfile}
               />
             ))}
+
+            {/* Formulaire d'ajout ou bouton */}
+            {showAddForm ? (
+              <AddProfileForm
+                onAdd={addProfile}
+                onCancel={() => setShowAddForm(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="w-full py-3 border-2 border-dashed border-grey-300 rounded-xl text-grey-500 hover:border-primary-400 hover:text-primary-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Ajouter un membre
+              </button>
+            )}
           </div>
         </div>
       </div>

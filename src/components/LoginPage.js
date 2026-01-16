@@ -86,6 +86,7 @@ export default function LoginPage({ onLogin }) {
         const expiresAt = Date.now() + SESSION_DURATION;
         localStorage.setItem('sessionExpiresAt', expiresAt.toString());
         localStorage.setItem('familyName', account.family_name || 'Invaders');
+        localStorage.setItem('credentialId', account.id);
         onLogin();
       } else {
         setError('Identifiant ou mot de passe incorrect');
