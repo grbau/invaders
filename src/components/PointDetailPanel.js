@@ -426,7 +426,7 @@ export default function PointDetailPanel({ point, onClose }) {
                   </a>
                   {form.name && (
                     <a
-                      href={`https://www.instagram.com/explore/tags/${form.name.toUpperCase().replace(/[^A-Z0-9_]/g, '').replace(/_0+(\d)/g, '_0$1')}/`}
+                      href={`https://www.instagram.com/explore/tags/${form.name.toUpperCase().replace(/[^A-Z0-9_]/g, '').replace(/_0*(\d+)/, (_, num) => '_' + (num.length === 1 ? '0' + num : num))}/`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-pink-500 hover:text-pink-700 text-sm"
