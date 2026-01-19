@@ -7,24 +7,50 @@ export function UserProvider({ children }) {
   const [profiles, setProfiles] = useState([]);
   const [currentProfile, setCurrentProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [credentialId, setCredentialId] = useState(null);
+  const [credentialId, setCredentialId] = useState(() => localStorage.getItem('credentialId'));
 
+  // Écouter les changements de localStorage (notamment après login)
   useEffect(() => {
-    // Récupérer le credential_id depuis localStorage
-    const storedCredentialId = localStorage.getItem('credentialId');
-    setCredentialId(storedCredentialId);
+    const handleStorageChange = () => {
+      const newCredentialId = localStorage.getItem('credentialId');
+      if (newCredentialId !== credentialId) {
+        setCredentialId(newCredentialId);
+      }
+    };
 
+    // Écouter les événements storage (pour les changements cross-tab)
+    window.addEventListener('storage', handleStorageChange);
+
+    // Vérifier périodiquement pour les changements dans le même tab
+    // (storage event ne se déclenche pas pour le même tab)
+    const interval = setInterval(handleStorageChange, 100);
+
+    // Nettoyer après 5 secondes (suffisant pour capter le login)
+    const timeout = setTimeout(() => clearInterval(interval), 5000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [credentialId]);
+
+  // Charger les profils quand credentialId change
+  useEffect(() => {
     const fetchProfiles = async () => {
-      if (!storedCredentialId) {
+      if (!credentialId) {
+        setProfiles([]);
+        setCurrentProfile(null);
         setLoading(false);
         return;
       }
 
+      setLoading(true);
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('credential_id', storedCredentialId)
+          .eq('credential_id', credentialId)
           .order('name');
 
         if (error) {
@@ -40,6 +66,9 @@ export function UserProvider({ children }) {
           const savedProfileId = localStorage.getItem('currentProfileId');
           const savedProfile = data.find(p => p.id === savedProfileId);
           setCurrentProfile(savedProfile || data[0]);
+        } else {
+          setProfiles([]);
+          setCurrentProfile(null);
         }
       } catch (error) {
         console.error('Erreur lors du chargement des profils:', error);
@@ -49,7 +78,7 @@ export function UserProvider({ children }) {
     };
 
     fetchProfiles();
-  }, []);
+  }, [credentialId]);
 
   const switchProfile = (profile) => {
     setCurrentProfile(profile);

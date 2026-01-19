@@ -23,8 +23,11 @@ export default function PointForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState('');
   const [isAddressFocused, setIsAddressFocused] = useState(false);
+  const [isNameFocused, setIsNameFocused] = useState(false);
+  const [nameSuggestions, setNameSuggestions] = useState([]);
   const skipFetchRef = useRef(false);
   const addressContainerRef = useRef(null);
+  const nameContainerRef = useRef(null);
 
   const fetchSuggestions = async (query) => {
     if (!query.trim()) {
@@ -52,16 +55,72 @@ export default function PointForm() {
         setIsAddressFocused(false);
         setSuggestions([]);
       }
+      if (nameContainerRef.current && !nameContainerRef.current.contains(event.target)) {
+        setIsNameFocused(false);
+        setNameSuggestions([]);
+      }
     };
 
-    if (isAddressFocused && suggestions.length > 0) {
+    if ((isAddressFocused && suggestions.length > 0) || (isNameFocused && nameSuggestions.length > 0)) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isAddressFocused, suggestions.length]);
+  }, [isAddressFocused, suggestions.length, isNameFocused, nameSuggestions.length]);
+
+  // Rechercher les suggestions de noms dans la base de données
+  useEffect(() => {
+    const fetchNameSuggestions = async () => {
+      if (!form.name.trim() || form.name.length < 2) {
+        setNameSuggestions([]);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('points')
+          .select('name, address, latitude, longitude')
+          .ilike('name', `${form.name}%`)
+          .order('name')
+          .limit(10);
+
+        if (error) {
+          console.error('Erreur lors de la recherche de suggestions:', error);
+          return;
+        }
+
+        // Dédupliquer par nom (garder le premier de chaque nom unique)
+        const uniqueSuggestions = data?.filter((point, index, self) =>
+          index === self.findIndex(p => p.name.toLowerCase() === point.name.toLowerCase())
+        ) || [];
+
+        setNameSuggestions(uniqueSuggestions);
+      } catch (error) {
+        console.error('Erreur lors de la recherche de suggestions:', error);
+      }
+    };
+
+    if (!isNameFocused) return;
+
+    const timer = setTimeout(fetchNameSuggestions, 300);
+    return () => clearTimeout(timer);
+  }, [form.name, isNameFocused]);
+
+  // Sélectionner une suggestion de nom
+  const handleSelectNameSuggestion = (suggestion) => {
+    setForm({
+      ...form,
+      name: suggestion.name,
+      address: suggestion.address || '',
+      latitude: suggestion.latitude || '',
+      longitude: suggestion.longitude || '',
+    });
+    setNameSuggestions([]);
+    setIsNameFocused(false);
+    checkDuplicateName(suggestion.name);
+  };
 
   useEffect(() => {
     if (skipFetchRef.current) {
@@ -161,15 +220,16 @@ export default function PointForm() {
       {/* Layout horizontal sur desktop, vertical sur mobile */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
         {/* Nom du point */}
-        <div className="md:col-span-1">
+        <div className="relative md:col-span-1" ref={nameContainerRef}>
           <label className={labelClasses}>
             Nom
           </label>
           <input
             type="text"
-            placeholder="Mon point"
+            placeholder="PA_01, PA_02..."
             value={form.name}
             onChange={handleNameChange}
+            onFocus={() => setIsNameFocused(true)}
             className={`${inputClasses} ${nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
           />
           <div className="h-5 mt-1">
@@ -182,6 +242,30 @@ export default function PointForm() {
               </p>
             )}
           </div>
+
+          {nameSuggestions.length > 0 && isNameFocused && (
+            <ul className="absolute z-20 w-full bg-white border border-grey-300 shadow-lg mt-1 max-h-48 overflow-y-auto custom-scrollbar top-[calc(100%-1.5rem)]">
+              {nameSuggestions.map((s, idx) => (
+                <li
+                  key={idx}
+                  onClick={() => handleSelectNameSuggestion(s)}
+                  className="px-4 py-3 hover:bg-primary-50 cursor-pointer text-sm text-grey-700 transition border-b border-grey-100 last:border-b-0"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-primary-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                      </svg>
+                    </span>
+                    <span className="font-medium">{s.name}</span>
+                  </div>
+                  {s.address && (
+                    <p className="text-xs text-grey-400 mt-1 ml-6 truncate">{s.address}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Adresse */}
